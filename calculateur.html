@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Calculateur achat-revente</title>
+</head>
+<body>
+    <h1>Calculateur automobile</h1>
+
+    <label>Prix d'achat (€) :</label>
+    <input type="number" id="achat">
+
+    <br><br>
+
+    <label>Frais (€) :</label>
+    <input type="number" id="frais">
+
+    <br><br>
+
+    <label>Prix de revente (€) :</label>
+    <input type="number" id="revente">
+
+    <br><br>
+
+    <button onclick="calculer()">Calculer</button>
+
+    <h2 id="resultat"></h2>
+
+    <script>
+        function calculer() {
+            let achat = Number(document.getElementById("achat").value);
+            let frais = Number(document.getElementById("frais").value);
+            let revente = Number(document.getElementById("revente").value);
+
+            let benefice = revente - achat - frais;
+
+            document.getElementById("resultat").textContent = "Bénéfice : " + benefice + " €";
+        }
+    </script>
+
+</body>
+</html>
