@@ -31,7 +31,7 @@
             let frais = Number(document.getElementById("frais").value);
             let revente = Number(document.getElementById("revente").value);
 
-            let benefice = revente - achat + frais;
+            let benefice = revente - achat - frais;
 
             document.getElementById("resultat").textContent = "Bénéfice : " + benefice + " €";
         }
