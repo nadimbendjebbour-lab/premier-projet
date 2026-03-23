@@ -31,9 +31,18 @@
             let frais = Number(document.getElementById("frais").value);
             let revente = Number(document.getElementById("revente").value);
 
+            if (!achat || !frais || !revente) {
+                document.getElementById("resultat").textContent = "Remplis tous les champs.";
+                return;
+            }
+
             let benefice = revente - achat - frais;
 
-            document.getElementById("resultat").textContent = "Bénéfice : " + benefice + " €";
+            if (benefice > 0) {
+                document.getElementById("resultat").textContent = "Bénéfice : +" + benefice + " €";
+            } else {
+                document.getElementById("resultat").textContent = "Perte : " + benefice + " €";
+            }
         }
     </script>
 
