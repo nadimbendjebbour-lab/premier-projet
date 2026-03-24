@@ -1,86 +1,331 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
-    <title>Calculateur achat-revente</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculateur Achat-Revente</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
         body {
-            font-family: Arial, sans-serif;
-            max-width: 400px;
-            margin: 50px auto;
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #0f0f13;
             padding: 20px;
-            background-color: #ffb6c1;
+        }
+
+        .card {
+            background: #1a1a24;
+            border: 1px solid #2a2a38;
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 420px;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5);
+        }
+
+        .header {
+            margin-bottom: 32px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(99, 102, 241, 0.12);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            color: #818cf8;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            padding: 5px 12px;
+            border-radius: 20px;
+            margin-bottom: 16px;
+        }
+
+        .badge::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            background: #818cf8;
+            border-radius: 50%;
         }
 
         h1 {
-            color: #333;
+            font-size: 26px;
+            font-weight: 700;
+            color: #f1f1f5;
+            line-height: 1.2;
         }
 
-        input {
+        h1 span {
+            color: #818cf8;
+        }
+
+        .subtitle {
+            margin-top: 6px;
+            font-size: 13px;
+            color: #6b6b80;
+        }
+
+        .fields {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #9090a8;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        input[type="number"] {
             width: 100%;
-            padding: 8px;
-            margin-top: 5px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            background: #12121a;
+            border: 1px solid #2a2a38;
+            border-radius: 10px;
+            padding: 12px 44px 12px 16px;
+            font-family: 'Inter', sans-serif;
+            font-size: 15px;
+            font-weight: 500;
+            color: #f1f1f5;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"]::-webkit-inner-spin-button,
+        input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+        }
+
+        input[type="number"]::placeholder {
+            color: #3a3a4e;
+        }
+
+        input[type="number"]:focus {
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+
+        .input-suffix {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            font-weight: 600;
+            color: #4a4a60;
+            pointer-events: none;
+        }
+
+        .divider {
+            height: 1px;
+            background: #2a2a38;
+            margin: 8px 0;
         }
 
         button {
-            margin-top: 20px;
             width: 100%;
-            padding: 10px;
-            background-color: #333;
+            padding: 14px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
             color: white;
             border: none;
-            border-radius: 4px;
+            border-radius: 10px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
             cursor: pointer;
+            letter-spacing: 0.03em;
+            transition: opacity 0.2s, transform 0.15s;
+            box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
         }
 
-        #resultat {
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        button:active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .result {
             margin-top: 20px;
-            color: #333;
+            border-radius: 12px;
+            padding: 18px 20px;
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .result.profit {
+            background: rgba(16, 185, 129, 0.08);
+            border: 1px solid rgba(16, 185, 129, 0.25);
+        }
+
+        .result.loss {
+            background: rgba(239, 68, 68, 0.08);
+            border: 1px solid rgba(239, 68, 68, 0.25);
+        }
+
+        .result.error {
+            background: rgba(245, 158, 11, 0.08);
+            border: 1px solid rgba(245, 158, 11, 0.25);
+        }
+
+        .result-label {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .result.profit .result-label { color: #10b981; }
+        .result.loss   .result-label { color: #ef4444; }
+        .result.error  .result-label { color: #f59e0b; }
+
+        .result-amount {
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .result.profit .result-amount { color: #34d399; }
+        .result.loss   .result-amount { color: #f87171; }
+        .result.error  .result-amount { font-size: 14px; color: #fbbf24; }
+
+        .result-meta {
+            margin-top: 8px;
+            font-size: 12px;
+            color: #6b6b80;
+        }
+
+        .result-meta span {
+            color: #9090a8;
+            font-weight: 500;
         }
     </style>
 </head>
 <body>
-    <h1>Calculateur automobile</h1>
+    <div class="card">
+        <div class="header">
+            <div class="badge">Automobile</div>
+            <h1>Calculateur <span>Achat-Revente</span></h1>
+            <p class="subtitle">Estimez votre bénéfice ou perte en quelques secondes.</p>
+        </div>
 
-    <label>Prix d'achat (€) :</label>
-    <input type="number" id="achat">
+        <div class="fields">
+            <div class="field">
+                <label>Prix d'achat</label>
+                <div class="input-wrapper">
+                    <input type="number" id="achat" placeholder="0">
+                    <span class="input-suffix">€</span>
+                </div>
+            </div>
 
-    <br><br>
+            <div class="field">
+                <label>Frais annexes</label>
+                <div class="input-wrapper">
+                    <input type="number" id="frais" placeholder="0">
+                    <span class="input-suffix">€</span>
+                </div>
+            </div>
 
-    <label>Frais (€) :</label>
-    <input type="number" id="frais">
+            <div class="divider"></div>
 
-    <br><br>
+            <div class="field">
+                <label>Prix de revente</label>
+                <div class="input-wrapper">
+                    <input type="number" id="revente" placeholder="0">
+                    <span class="input-suffix">€</span>
+                </div>
+            </div>
+        </div>
 
-    <label>Prix de revente (€) :</label>
-    <input type="number" id="revente">
+        <button onclick="calculer()">Calculer le résultat</button>
 
-    <br><br>
-
-    <button onclick="calculer()">Calculer</button>
-
-    <h2 id="resultat"></h2>
+        <div class="result" id="resultat">
+            <div class="result-label" id="result-label"></div>
+            <div class="result-amount" id="result-amount"></div>
+            <div class="result-meta" id="result-meta"></div>
+        </div>
+    </div>
 
     <script>
         function calculer() {
-            let achat = Number(document.getElementById("achat").value);
-            let frais = Number(document.getElementById("frais").value);
-            let revente = Number(document.getElementById("revente").value);
+            const achat   = Number(document.getElementById("achat").value);
+            const frais   = Number(document.getElementById("frais").value);
+            const revente = Number(document.getElementById("revente").value);
+
+            const box    = document.getElementById("resultat");
+            const label  = document.getElementById("result-label");
+            const amount = document.getElementById("result-amount");
+            const meta   = document.getElementById("result-meta");
+
+            box.style.display = "none";
+            box.className = "result";
 
             if (!achat || !frais || !revente) {
-                document.getElementById("resultat").textContent = "Remplis tous les champs.";
+                box.classList.add("error");
+                label.textContent = "Champs manquants";
+                amount.textContent = "Remplis tous les champs.";
+                meta.innerHTML = "";
+                box.style.display = "block";
                 return;
             }
 
-            let benefice = revente - achat - frais;
+            const benefice  = revente - achat - frais;
+            const coutTotal = achat + frais;
+            const pct       = ((benefice / coutTotal) * 100).toFixed(1);
+            const sign      = benefice >= 0 ? "+" : "";
 
-            if (benefice > 0) {
-                document.getElementById("resultat").textContent = "Bénéfice : +" + benefice + " €";
+            if (benefice >= 0) {
+                box.classList.add("profit");
+                label.textContent = "Bénéfice net";
+                amount.textContent = sign + benefice.toLocaleString("fr-FR") + " €";
+                meta.innerHTML = `Coût total <span>${coutTotal.toLocaleString("fr-FR")} €</span> · Marge <span>${sign}${pct} %</span>`;
             } else {
-                document.getElementById("resultat").textContent = "Perte : " + benefice + " €";
+                box.classList.add("loss");
+                label.textContent = "Perte nette";
+                amount.textContent = benefice.toLocaleString("fr-FR") + " €";
+                meta.innerHTML = `Coût total <span>${coutTotal.toLocaleString("fr-FR")} €</span> · Marge <span>${pct} %</span>`;
             }
+
+            box.style.display = "block";
         }
+
+        document.addEventListener("keydown", e => {
+            if (e.key === "Enter") calculer();
+        });
     </script>
 </body>
 </html>
