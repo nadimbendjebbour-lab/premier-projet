@@ -1,23 +1,37 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
-from database import get_db, init_db
+from database import get_db, init_db, ANNEES
 from datetime import date
 
 app = Flask(__name__)
 app.secret_key = "caisse-bendjebbour-secret-2024"
+
+ANNEE_COURANTE = date.today().year
 
 
 # ─────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────
 
-def get_stats():
+def get_stats(annee):
     conn = get_db()
-    total     = conn.execute("SELECT COUNT(*) FROM membres").fetchone()[0]
-    payes     = conn.execute("SELECT COUNT(*) FROM membres WHERE statut='payé'").fetchone()[0]
-    non_payes = total - payes
-    somme     = conn.execute("SELECT COALESCE(SUM(montant_du),0) FROM membres WHERE statut='payé'").fetchone()[0]
+    total   = conn.execute("SELECT COUNT(*) FROM membres").fetchone()[0]
+    payes   = conn.execute(
+        "SELECT COUNT(*) FROM paiements WHERE annee=? AND statut='payé'", (annee,)
+    ).fetchone()[0]
+    somme   = conn.execute(
+        """SELECT COALESCE(SUM(m.montant_du),0)
+           FROM paiements p JOIN membres m ON m.id=p.membre_id
+           WHERE p.annee=? AND p.statut='payé'""", (annee,)
+    ).fetchone()[0]
     conn.close()
-    return dict(total=total, payes=payes, non_payes=non_payes, somme=somme)
+    return dict(total=total, payes=payes, non_payes=total - payes, somme=somme)
+
+
+def paiements_pour_membre(conn, membre_id):
+    rows = conn.execute(
+        "SELECT * FROM paiements WHERE membre_id=? ORDER BY annee", (membre_id,)
+    ).fetchall()
+    return {r["annee"]: r for r in rows}
 
 
 # ─────────────────────────────────────────────
@@ -26,42 +40,69 @@ def get_stats():
 
 @app.route("/")
 def index():
-    q = request.args.get("q", "").strip()
+    q     = request.args.get("q", "").strip()
+    annee = int(request.args.get("annee", ANNEE_COURANTE))
+    if annee not in ANNEES:
+        annee = ANNEE_COURANTE
+
     conn = get_db()
 
     if q:
         like = f"%{q}%"
         membres = conn.execute(
             """SELECT * FROM membres
-               WHERE nom LIKE ? OR prenom LIKE ? OR CAST(numero_famille AS TEXT) LIKE ?
-               ORDER BY est_doyen DESC, numero_famille ASC""",
+               WHERE nom LIKE ? OR prenom LIKE ? OR CAST(numero AS TEXT) LIKE ?
+               ORDER BY numero ASC""",
             (like, like, like),
         ).fetchall()
     else:
         membres = conn.execute(
-            "SELECT * FROM membres ORDER BY est_doyen DESC, numero_famille ASC"
+            "SELECT * FROM membres ORDER BY numero ASC"
         ).fetchall()
 
+    # Pour chaque membre, récupérer tous ses paiements indexés par année
+    paiements_map = {}
+    for m in membres:
+        paiements_map[m["id"]] = paiements_pour_membre(conn, m["id"])
+
     conn.close()
-    stats = get_stats()
-    return render_template("index.html", membres=membres, q=q, stats=stats)
+    stats = get_stats(annee)
+    return render_template(
+        "index.html",
+        membres=membres,
+        paiements_map=paiements_map,
+        annees=ANNEES,
+        annee=annee,
+        q=q,
+        stats=stats,
+    )
 
 
 @app.route("/membre/<int:id>")
 def membre(id):
     conn = get_db()
     m = conn.execute("SELECT * FROM membres WHERE id=?", (id,)).fetchone()
-    conn.close()
     if not m:
+        conn.close()
         flash("Membre introuvable.", "danger")
         return redirect(url_for("index"))
+    paiements = paiements_pour_membre(conn, id)
+    conn.close()
     today = date.today().isoformat()
-    return render_template("membre.html", m=m, today=today)
+    return render_template(
+        "membre.html",
+        m=m,
+        paiements=paiements,
+        annees=ANNEES,
+        annee_courante=ANNEE_COURANTE,
+        today=today,
+    )
 
 
 @app.route("/membre/<int:id>/payer", methods=["POST"])
 def payer(id):
-    mode  = request.form.get("mode_paiement")
+    annee  = int(request.form.get("annee", ANNEE_COURANTE))
+    mode   = request.form.get("mode_paiement")
     date_p = request.form.get("date_paiement") or date.today().isoformat()
 
     if mode not in ("espèce", "chèque", "virement"):
@@ -69,28 +110,37 @@ def payer(id):
         return redirect(url_for("membre", id=id))
 
     conn = get_db()
-    conn.execute(
-        """UPDATE membres SET statut='payé', mode_paiement=?, date_paiement=?
-           WHERE id=?""",
-        (mode, date_p, id),
-    )
+    # Upsert : si la ligne n'existe pas encore pour cette année, l'insérer
+    existing = conn.execute(
+        "SELECT id FROM paiements WHERE membre_id=? AND annee=?", (id, annee)
+    ).fetchone()
+    if existing:
+        conn.execute(
+            "UPDATE paiements SET statut='payé', mode_paiement=?, date_paiement=? WHERE membre_id=? AND annee=?",
+            (mode, date_p, id, annee),
+        )
+    else:
+        conn.execute(
+            "INSERT INTO paiements (membre_id,annee,statut,mode_paiement,date_paiement) VALUES(?,?,?,?,?)",
+            (id, annee, "payé", mode, date_p),
+        )
     conn.commit()
     conn.close()
-    flash("Paiement enregistré avec succès.", "success")
+    flash(f"Paiement {annee} enregistré.", "success")
     return redirect(url_for("membre", id=id))
 
 
 @app.route("/membre/<int:id>/annuler", methods=["POST"])
 def annuler_paiement(id):
-    conn = get_db()
+    annee = int(request.form.get("annee", ANNEE_COURANTE))
+    conn  = get_db()
     conn.execute(
-        """UPDATE membres SET statut='non payé', mode_paiement=NULL, date_paiement=NULL
-           WHERE id=?""",
-        (id,),
+        "UPDATE paiements SET statut='non payé', mode_paiement=NULL, date_paiement=NULL WHERE membre_id=? AND annee=?",
+        (id, annee),
     )
     conn.commit()
     conn.close()
-    flash("Paiement annulé.", "warning")
+    flash(f"Paiement {annee} annulé.", "warning")
     return redirect(url_for("membre", id=id))
 
 
@@ -100,47 +150,46 @@ def ajouter():
         nom    = request.form.get("nom", "").strip()
         prenom = request.form.get("prenom", "").strip()
         type_  = request.form.get("type")
-        doyen  = 1 if request.form.get("est_doyen") else 0
+        chef   = 1 if request.form.get("est_chef_famille") else 0
 
-        if not nom or not prenom or type_ not in ("famille", "celibataire"):
+        if not nom or type_ not in ("famille", "celibataire"):
             flash("Veuillez remplir tous les champs obligatoires.", "danger")
-            return render_template("ajouter.html")
+            return render_template("ajouter.html", annees=ANNEES)
 
         montant = 60 if type_ == "famille" else 30
-
-        conn = get_db()
-
-        # Si nouveau doyen, retirer l'ancien
-        if doyen:
-            conn.execute("UPDATE membres SET est_doyen=0")
-
-        # Prochain numéro de famille
-        max_num = conn.execute("SELECT COALESCE(MAX(numero_famille),0) FROM membres").fetchone()[0]
+        conn    = get_db()
+        max_num = conn.execute("SELECT COALESCE(MAX(numero),0) FROM membres").fetchone()[0]
         numero  = max_num + 1
 
         try:
             conn.execute(
-                """INSERT INTO membres
-                   (numero_famille, nom, prenom, type, montant_du, statut, est_doyen)
-                   VALUES (?, ?, ?, ?, ?, 'non payé', ?)""",
-                (numero, nom, prenom, type_, montant, doyen),
+                "INSERT INTO membres (numero,nom,prenom,type,montant_du,est_chef_famille) VALUES(?,?,?,?,?,?)",
+                (numero, nom, prenom, type_, montant, chef),
             )
+            membre_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+
+            # Créer les lignes de paiement vides pour toutes les années
+            for a in ANNEES:
+                conn.execute(
+                    "INSERT OR IGNORE INTO paiements (membre_id,annee,statut) VALUES(?,?,'non payé')",
+                    (membre_id, a),
+                )
             conn.commit()
-            flash(f"{prenom} {nom} ajouté(e) avec succès (N° {numero}).", "success")
+            flash(f"{prenom} {nom} ajouté(e) (N° {numero}).", "success")
             return redirect(url_for("index"))
         except Exception as e:
             conn.rollback()
-            flash(f"Erreur lors de l'ajout : {e}", "danger")
+            flash(f"Erreur : {e}", "danger")
         finally:
             conn.close()
 
-    return render_template("ajouter.html")
+    return render_template("ajouter.html", annees=ANNEES)
 
 
 @app.route("/modifier/<int:id>", methods=["GET", "POST"])
 def modifier(id):
     conn = get_db()
-    m = conn.execute("SELECT * FROM membres WHERE id=?", (id,)).fetchone()
+    m    = conn.execute("SELECT * FROM membres WHERE id=?", (id,)).fetchone()
     if not m:
         conn.close()
         flash("Membre introuvable.", "danger")
@@ -150,25 +199,21 @@ def modifier(id):
         nom    = request.form.get("nom", "").strip()
         prenom = request.form.get("prenom", "").strip()
         type_  = request.form.get("type")
-        doyen  = 1 if request.form.get("est_doyen") else 0
+        chef   = 1 if request.form.get("est_chef_famille") else 0
 
-        if not nom or not prenom or type_ not in ("famille", "celibataire"):
+        if not nom or type_ not in ("famille", "celibataire"):
             flash("Veuillez remplir tous les champs obligatoires.", "danger")
+            conn.close()
             return render_template("modifier.html", m=m)
 
         montant = 60 if type_ == "famille" else 30
-
-        if doyen:
-            conn.execute("UPDATE membres SET est_doyen=0 WHERE id != ?", (id,))
-
         conn.execute(
-            """UPDATE membres SET nom=?, prenom=?, type=?, montant_du=?, est_doyen=?
-               WHERE id=?""",
-            (nom, prenom, type_, montant, doyen, id),
+            "UPDATE membres SET nom=?,prenom=?,type=?,montant_du=?,est_chef_famille=? WHERE id=?",
+            (nom, prenom, type_, montant, chef, id),
         )
         conn.commit()
         conn.close()
-        flash("Membre modifié avec succès.", "success")
+        flash("Modifications enregistrées.", "success")
         return redirect(url_for("membre", id=id))
 
     conn.close()
@@ -178,7 +223,7 @@ def modifier(id):
 @app.route("/supprimer/<int:id>", methods=["POST"])
 def supprimer(id):
     conn = get_db()
-    m = conn.execute("SELECT nom, prenom FROM membres WHERE id=?", (id,)).fetchone()
+    m    = conn.execute("SELECT nom, prenom FROM membres WHERE id=?", (id,)).fetchone()
     if m:
         conn.execute("DELETE FROM membres WHERE id=?", (id,))
         conn.commit()
@@ -187,8 +232,6 @@ def supprimer(id):
     return redirect(url_for("index"))
 
 
-# ─────────────────────────────────────────────
-# Entry point
 # ─────────────────────────────────────────────
 
 if __name__ == "__main__":
