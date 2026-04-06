@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}Ajouter un membre — Caisse Bendjebbour{% endblock %}
+
+{% block content %}
+
+<div class="mb-3">
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+  </a>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header py-3" style="background:var(--primary);color:#fff;border-radius:12px 12px 0 0">
+        <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Ajouter un membre</h5>
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('ajouter') }}">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
+            <input type="text" name="nom" class="form-control"
+                   placeholder="Ex : Bencherif" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Prénom <span class="text-danger">*</span></label>
+            <input type="text" name="prenom" class="form-control"
+                   placeholder="Ex : Karim" required>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Type <span class="text-danger">*</span></label>
+            <div class="row g-2" id="type-cards">
+              <div class="col-6">
+                <input type="radio" class="btn-check" name="type" id="type_famille"
+                       value="famille" required checked>
+                <label class="btn btn-outline-info w-100 py-3" for="type_famille">
+                  <i class="bi bi-people-fill d-block fs-3 mb-1"></i>
+                  Famille<br>
+                  <small class="text-muted">60 €</small>
+                </label>
+              </div>
+              <div class="col-6">
+                <input type="radio" class="btn-check" name="type" id="type_celibataire"
+                       value="celibataire">
+                <label class="btn btn-outline-secondary w-100 py-3" for="type_celibataire">
+                  <i class="bi bi-person-fill d-block fs-3 mb-1"></i>
+                  Célibataire<br>
+                  <small class="text-muted">30 €</small>
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- Montant calculé automatiquement -->
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Montant dû (calculé automatiquement)</label>
+            <div class="input-group">
+              <input type="text" id="montant_affiche" class="form-control" value="60 €" readonly>
+              <span class="input-group-text"><i class="bi bi-currency-euro"></i></span>
+            </div>
+          </div>
+
+          <div class="mb-3 form-check form-switch">
+            <input type="checkbox" class="form-check-input" name="est_doyen" id="est_doyen">
+            <label class="form-check-label" for="est_doyen">
+              <i class="bi bi-star-fill text-warning me-1"></i>
+              Désigner comme doyen
+              <small class="text-muted d-block">L'ancien doyen perdra ce statut.</small>
+            </label>
+          </div>
+
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary btn-lg">
+              <i class="bi bi-plus-circle me-1"></i>Ajouter le membre
+            </button>
+            <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Annuler</a>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const radios = document.querySelectorAll('input[name="type"]');
+  const montant = document.getElementById('montant_affiche');
+  radios.forEach(r => r.addEventListener('change', () => {
+    montant.value = r.value === 'famille' ? '60 €' : '30 €';
+  }));
+</script>
+{% endblock %}

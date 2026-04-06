@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ m.prenom }} {{ m.nom }} — Caisse Bendjebbour{% endblock %}
+
+{% block content %}
+
+<div class="mb-3">
+  <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+  </a>
+</div>
+
+<div class="row g-4">
+
+  <!-- Fiche membre -->
+  <div class="col-lg-7">
+    <div class="card">
+      <div class="card-header d-flex align-items-center gap-2 py-3"
+           style="background:var(--primary); color:#fff; border-radius:12px 12px 0 0">
+        {% if m.est_doyen %}
+          <span class="bg-warning text-dark rounded-circle d-flex align-items-center justify-content-center"
+                style="width:42px;height:42px;font-size:1.2rem">
+            <i class="bi bi-star-fill"></i>
+          </span>
+        {% else %}
+          <span class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center"
+                style="width:42px;height:42px;font-size:1.2rem">
+            <i class="bi bi-person-fill"></i>
+          </span>
+        {% endif %}
+        <div>
+          <div class="fw-bold fs-5">{{ m.prenom }} {{ m.nom }}</div>
+          <div style="opacity:.75;font-size:.85rem">
+            N° {{ m.numero_famille }}
+            {% if m.est_doyen %}
+              &nbsp;·&nbsp;<span class="badge bg-warning text-dark">Doyen</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-5 text-muted">Type</dt>
+          <dd class="col-7">
+            {% if m.type == 'famille' %}
+              <span class="badge bg-info text-dark"><i class="bi bi-people me-1"></i>Famille</span>
+            {% else %}
+              <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>Célibataire</span>
+            {% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted">Montant dû</dt>
+          <dd class="col-7 fw-semibold">{{ m.montant_du }} €</dd>
+
+          <dt class="col-5 text-muted">Statut</dt>
+          <dd class="col-7">
+            {% if m.statut == 'payé' %}
+              <span class="badge-paye"><i class="bi bi-check-circle me-1"></i>Payé</span>
+            {% else %}
+              <span class="badge-nonpaye"><i class="bi bi-x-circle me-1"></i>Non payé</span>
+            {% endif %}
+          </dd>
+
+          {% if m.statut == 'payé' %}
+          <dt class="col-5 text-muted">Mode de paiement</dt>
+          <dd class="col-7">
+            {% if m.mode_paiement == 'espèce' %}
+              <i class="bi bi-cash me-1 text-success"></i>Espèce
+            {% elif m.mode_paiement == 'chèque' %}
+              <i class="bi bi-journal-check me-1 text-primary"></i>Chèque
+            {% elif m.mode_paiement == 'virement' %}
+              <i class="bi bi-bank me-1 text-info"></i>Virement
+            {% else %}
+              —
+            {% endif %}
+          </dd>
+
+          <dt class="col-5 text-muted">Date de paiement</dt>
+          <dd class="col-7">{{ m.date_paiement or "—" }}</dd>
+          {% endif %}
+        </dl>
+      </div>
+
+      <div class="card-footer bg-transparent d-flex gap-2 flex-wrap">
+        <a href="{{ url_for('modifier', id=m.id) }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-pencil me-1"></i>Modifier la fiche
+        </a>
+        <form method="POST" action="{{ url_for('supprimer', id=m.id) }}"
+              onsubmit="return confirm('Supprimer ce membre définitivement ?')">
+          <button class="btn btn-outline-danger btn-sm">
+            <i class="bi bi-trash me-1"></i>Supprimer
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Actions paiement -->
+  <div class="col-lg-5">
+
+    {% if m.statut == 'non payé' %}
+    <!-- Enregistrer un paiement -->
+    <div class="card border-success">
+      <div class="card-header bg-success text-white fw-semibold">
+        <i class="bi bi-cash-coin me-1"></i>Enregistrer un paiement
+      </div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('payer', id=m.id) }}">
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mode de paiement <span class="text-danger">*</span></label>
+            <div class="d-flex gap-3 flex-wrap">
+              {% for mode in ['espèce', 'chèque', 'virement'] %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode_paiement"
+                       id="mode_{{ loop.index }}" value="{{ mode }}"
+                       {% if loop.first %}checked{% endif %}>
+                <label class="form-check-label" for="mode_{{ loop.index }}">
+                  {{ mode|capitalize }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Date de paiement</label>
+            <input type="date" name="date_paiement" class="form-control" value="{{ today }}">
+          </div>
+          <button type="submit" class="btn btn-success w-100">
+            <i class="bi bi-check-lg me-1"></i>Confirmer le paiement de {{ m.montant_du }} €
+          </button>
+        </form>
+      </div>
+    </div>
+
+    {% else %}
+    <!-- Annuler le paiement -->
+    <div class="card border-warning">
+      <div class="card-header bg-warning text-dark fw-semibold">
+        <i class="bi bi-arrow-counterclockwise me-1"></i>Annuler le paiement
+      </div>
+      <div class="card-body">
+        <p class="text-muted small mb-3">
+          Paiement enregistré le <strong>{{ m.date_paiement }}</strong>
+          via <strong>{{ m.mode_paiement }}</strong>.
+          Cliquez ci-dessous pour annuler et repasser en « non payé ».
+        </p>
+        <form method="POST" action="{{ url_for('annuler_paiement', id=m.id) }}"
+              onsubmit="return confirm('Annuler ce paiement ?')">
+          <button type="submit" class="btn btn-warning w-100">
+            <i class="bi bi-x-circle me-1"></i>Annuler le paiement
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+
+{% endblock %}

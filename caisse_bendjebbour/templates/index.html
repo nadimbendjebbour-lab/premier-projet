@@ -1,0 +1,137 @@
+{% extends "base.html" %}
+{% block title %}Accueil — Caisse Bendjebbour{% endblock %}
+
+{% block content %}
+
+<!-- Stats -->
+<div class="row g-3 mb-4">
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:var(--primary)">
+      <div class="num">{{ stats.total }}</div>
+      <div class="lbl">Membres</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:#27ae60">
+      <div class="num">{{ stats.payes }}</div>
+      <div class="lbl">Payés</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:#e74c3c">
+      <div class="num">{{ stats.non_payes }}</div>
+      <div class="lbl">Non payés</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-3">
+    <div class="stat-card" style="background:#8e44ad">
+      <div class="num">{{ stats.somme }} €</div>
+      <div class="lbl">Collecté</div>
+    </div>
+  </div>
+</div>
+
+<!-- Search + Add -->
+<div class="card mb-4">
+  <div class="card-body">
+    <form method="GET" action="{{ url_for('index') }}" class="row g-2 align-items-center">
+      <div class="col">
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-search"></i></span>
+          <input type="text" name="q" class="form-control form-control-lg"
+                 placeholder="Rechercher par nom, prénom ou numéro de famille…"
+                 value="{{ q }}">
+          {% if q %}
+          <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-x-lg"></i>
+          </a>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary btn-lg" type="submit">
+          <i class="bi bi-search me-1"></i>Chercher
+        </button>
+      </div>
+      <div class="col-auto">
+        <a href="{{ url_for('ajouter') }}" class="btn btn-success btn-lg">
+          <i class="bi bi-person-plus me-1"></i>Ajouter
+        </a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Results info -->
+{% if q %}
+<p class="text-muted mb-2">
+  <i class="bi bi-funnel me-1"></i>
+  {{ membres|length }} résultat(s) pour <strong>« {{ q }} »</strong>
+</p>
+{% endif %}
+
+<!-- Members table -->
+<div class="card">
+  <div class="card-body p-0">
+    {% if membres %}
+    <div class="table-responsive">
+      <table class="table table-hover table-members mb-0">
+        <thead>
+          <tr>
+            <th class="ps-3">N°</th>
+            <th>Nom &amp; Prénom</th>
+            <th class="d-none d-md-table-cell">Type</th>
+            <th class="text-end">Montant dû</th>
+            <th class="text-center">Statut</th>
+            <th class="d-none d-sm-table-cell">Date paiement</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for m in membres %}
+          <tr class="{% if m.est_doyen %}doyen-row{% endif %}">
+            <td class="ps-3 fw-semibold text-muted">{{ m.numero_famille }}</td>
+            <td>
+              {% if m.est_doyen %}
+                <span class="doyen-badge me-1"><i class="bi bi-star-fill"></i> Doyen</span>
+              {% endif %}
+              <span class="fw-semibold">{{ m.nom }}</span> {{ m.prenom }}
+            </td>
+            <td class="d-none d-md-table-cell">
+              {% if m.type == 'famille' %}
+                <span class="badge bg-info text-dark"><i class="bi bi-people me-1"></i>Famille</span>
+              {% else %}
+                <span class="badge bg-secondary"><i class="bi bi-person me-1"></i>Célibataire</span>
+              {% endif %}
+            </td>
+            <td class="text-end fw-semibold">{{ m.montant_du }} €</td>
+            <td class="text-center">
+              {% if m.statut == 'payé' %}
+                <span class="badge-paye"><i class="bi bi-check-circle me-1"></i>Payé</span>
+              {% else %}
+                <span class="badge-nonpaye"><i class="bi bi-x-circle me-1"></i>Non payé</span>
+              {% endif %}
+            </td>
+            <td class="d-none d-sm-table-cell text-muted small">
+              {{ m.date_paiement or "—" }}
+            </td>
+            <td class="pe-3 text-end">
+              <a href="{{ url_for('membre', id=m.id) }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-eye"></i>
+              </a>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="text-center py-5 text-muted">
+      <i class="bi bi-search" style="font-size:2.5rem"></i>
+      <p class="mt-2">Aucun membre trouvé{% if q %} pour « {{ q }} »{% endif %}.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
