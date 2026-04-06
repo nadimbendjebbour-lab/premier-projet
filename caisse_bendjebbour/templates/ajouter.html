@@ -5,30 +5,27 @@
 
 <div class="mb-3">
   <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-arrow-left me-1"></i>Retour à la liste
+    <i class="bi bi-arrow-left me-1"></i>Retour
   </a>
 </div>
 
 <div class="row justify-content-center">
   <div class="col-lg-6">
     <div class="card">
-      <div class="card-header py-3"
-           style="background:var(--primary);color:#fff;border-radius:12px 12px 0 0">
+      <div class="card-header-primary">
         <h5 class="mb-0"><i class="bi bi-person-plus me-2"></i>Ajouter un membre</h5>
       </div>
       <div class="card-body">
-        <form method="POST" action="{{ url_for('ajouter') }}">
+        <form method="POST" action="{{ url_for('ajouter') }}" id="formAjouter">
 
           <div class="mb-3">
             <label class="form-label fw-semibold">Nom <span class="text-danger">*</span></label>
-            <input type="text" name="nom" class="form-control"
-                   placeholder="Ex : Bencherif" required>
+            <input type="text" name="nom" class="form-control" placeholder="Ex : Bencherif" required>
           </div>
 
           <div class="mb-3">
             <label class="form-label fw-semibold">Prénom</label>
-            <input type="text" name="prenom" class="form-control"
-                   placeholder="Ex : Karim">
+            <input type="text" name="prenom" class="form-control" placeholder="Ex : Karim">
           </div>
 
           <div class="mb-3">
@@ -37,7 +34,7 @@
               <div class="col-6">
                 <input type="radio" class="btn-check" name="type"
                        id="type_famille" value="famille" required checked>
-                <label class="btn btn-outline-info w-100 py-3" for="type_famille">
+                <label class="btn btn-outline-primary w-100 py-3" for="type_famille">
                   <i class="bi bi-people-fill d-block fs-3 mb-1"></i>
                   Famille<br><small class="text-muted">60 € / an</small>
                 </label>
@@ -53,27 +50,54 @@
             </div>
           </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Montant annuel (automatique)</label>
-            <div class="input-group">
-              <input type="text" id="montant_affiche" class="form-control"
-                     value="60 €" readonly>
-              <span class="input-group-text"><i class="bi bi-currency-euro"></i></span>
+          <!-- Options famille uniquement -->
+          <div id="optionsFamille">
+            <div class="mb-3">
+              <label class="form-label fw-semibold">Numéro de famille</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="mode_numero"
+                         id="mode_nouveau" value="nouveau" checked>
+                  <label class="form-check-label" for="mode_nouveau">
+                    Nouvelle famille <span class="text-muted">(N° {{ prochain_num }})</span>
+                  </label>
+                </div>
+                {% if familles %}
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="mode_numero"
+                         id="mode_existant" value="existant">
+                  <label class="form-check-label" for="mode_existant">
+                    Ajouter à une famille existante
+                  </label>
+                </div>
+                {% endif %}
+              </div>
+            </div>
+
+            {% if familles %}
+            <div class="mb-3" id="selectFamille" style="display:none">
+              <label class="form-label fw-semibold">Choisir la famille</label>
+              <select name="numero_existant" class="form-select">
+                {% for f in familles %}
+                <option value="{{ f.numero_famille }}">
+                  N°{{ f.numero_famille }} — Famille {{ f.nom }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            {% endif %}
+
+            <div class="mb-3 form-check form-switch" id="switchChef">
+              <input type="checkbox" class="form-check-input" name="est_chef_famille" id="est_chef" checked>
+              <label class="form-check-label" for="est_chef">
+                Chef de famille (père / responsable)
+              </label>
             </div>
           </div>
 
-          <div class="mb-3 form-check form-switch">
-            <input type="checkbox" class="form-check-input"
-                   name="est_chef_famille" id="est_chef">
-            <label class="form-check-label" for="est_chef">
-              <i class="bi bi-person-fill text-warning me-1"></i>Chef de famille
-              <small class="text-muted d-block">Le père ou responsable de la famille.</small>
-            </label>
-          </div>
-
-          <div class="d-grid gap-2">
+          <div class="d-grid gap-2 mt-4">
             <button type="submit" class="btn btn-primary btn-lg">
-              <i class="bi bi-plus-circle me-1"></i>Ajouter le membre
+              <i class="bi bi-plus-circle me-1"></i>Ajouter
             </button>
             <a href="{{ url_for('index') }}" class="btn btn-outline-secondary">Annuler</a>
           </div>
@@ -88,11 +112,41 @@
 
 {% block scripts %}
 <script>
+  // Afficher/masquer les options famille selon le type
   document.querySelectorAll('input[name="type"]').forEach(r =>
     r.addEventListener('change', () => {
-      document.getElementById('montant_affiche').value =
-        r.value === 'famille' ? '60 €' : '30 €';
+      document.getElementById('optionsFamille').style.display =
+        r.value === 'famille' ? '' : 'none';
     })
   );
+
+  // Afficher/masquer le select de famille existante
+  document.querySelectorAll('input[name="mode_numero"]').forEach(r =>
+    r.addEventListener('change', () => {
+      const sel = document.getElementById('selectFamille');
+      const chef = document.getElementById('switchChef');
+      if (sel) sel.style.display = r.value === 'existant' ? '' : 'none';
+      if (chef) chef.querySelector('input').checked = r.value !== 'existant';
+    })
+  );
+
+  // Pré-sélection si passage depuis une page famille (?famille=X)
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('famille')) {
+    const opt = document.getElementById('mode_existant');
+    if (opt) {
+      opt.checked = true;
+      const sel = document.getElementById('selectFamille');
+      if (sel) {
+        sel.style.display = '';
+        const num = params.get('famille');
+        [...sel.querySelector('select').options].forEach(o => {
+          if (o.value === num) o.selected = true;
+        });
+      }
+      const chef = document.getElementById('switchChef');
+      if (chef) chef.querySelector('input').checked = false;
+    }
+  }
 </script>
 {% endblock %}

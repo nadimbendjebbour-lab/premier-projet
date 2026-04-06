@@ -7,38 +7,33 @@
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
   <style>
-    :root {
-      --primary:   #1a5276;
-      --primary-d: #154360;
-    }
-    body { background: #f0f4f8; font-family: "Segoe UI", system-ui, sans-serif; }
+    :root { --primary: #1a5276; --primary-d: #154360; }
+    body  { background: #f0f4f8; font-family: "Segoe UI", system-ui, sans-serif; }
 
     .navbar { background: var(--primary) !important; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
-    .navbar-brand { font-size: 1.3rem; font-weight: 700; letter-spacing: .5px; }
+    .navbar-brand { font-size: 1.25rem; font-weight: 700; }
     .nav-link { color: rgba(255,255,255,.85) !important; }
     .nav-link:hover, .nav-link.active { color: #fff !important; }
 
     .card { border: none; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.08); }
+    .card-header-primary {
+      background: var(--primary); color: #fff;
+      border-radius: 12px 12px 0 0; padding: .85rem 1.25rem;
+    }
 
-    .badge-paye    { background:#d4efdf; color:#1e8449; font-weight:600; padding:.35em .75em; border-radius:20px; }
-    .badge-nonpaye { background:#fadbd8; color:#c0392b; font-weight:600; padding:.35em .75em; border-radius:20px; }
+    /* Badges statut */
+    .badge-paye    { background:#d4efdf; color:#1e8449; font-weight:600; padding:.35em .7em; border-radius:20px; white-space:nowrap; }
+    .badge-nonpaye { background:#fadbd8; color:#c0392b; font-weight:600; padding:.35em .7em; border-radius:20px; white-space:nowrap; }
 
-    /* Ligne chef de famille : légère teinte dorée */
-    .chef-row { background: linear-gradient(90deg, #fef9ec 0%, #fdfefe 100%); }
-
-    .stat-card { border-radius: 12px; padding: 1rem 1.25rem; color: #fff; }
-    .stat-card .num { font-size: 2rem; font-weight: 700; line-height: 1; }
-    .stat-card .lbl { font-size: .8rem; opacity: .85; text-transform: uppercase; letter-spacing: .5px; }
-
-    .table-members thead { background: var(--primary); color: #fff; }
-    .table-members tbody tr:hover { background: #ebf5fb; }
-    .table-members td, .table-members th { vertical-align: middle; }
-    .table-members thead th.table-active { background: rgba(255,255,255,.2); }
+    /* Stat cards */
+    .stat-card { border-radius:12px; padding:1rem 1.25rem; color:#fff; }
+    .stat-card .num { font-size:1.9rem; font-weight:700; line-height:1; }
+    .stat-card .lbl { font-size:.75rem; opacity:.85; text-transform:uppercase; letter-spacing:.5px; }
 
     .btn-primary   { background: var(--primary); border-color: var(--primary); }
     .btn-primary:hover { background: var(--primary-d); border-color: var(--primary-d); }
 
-    footer { font-size:.8rem; color:#7f8c8d; padding:1.5rem 0; text-align:center; }
+    footer { font-size:.78rem; color:#95a5a6; padding:1.5rem 0; text-align:center; }
   </style>
 </head>
 <body>
@@ -75,11 +70,9 @@
   {% endfor %}
 </div>
 
-<main class="container py-4">
-  {% block content %}{% endblock %}
-</main>
+<main class="container py-4">{% block content %}{% endblock %}</main>
 
-<footer>&copy; 2024 Caisse Bendjebbour &mdash; Cahier de caisse familial</footer>
+<footer>&copy; 2024 Caisse Bendjebbour</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 {% block scripts %}{% endblock %}

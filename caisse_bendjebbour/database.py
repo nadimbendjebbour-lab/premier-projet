@@ -1,5 +1,6 @@
 import sqlite3
 import os
+import random
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "caisse.db")
 ANNEES  = list(range(2020, 2027))   # 2020 → 2026
@@ -15,10 +16,11 @@ def get_db():
 def init_db():
     conn = get_db()
 
+    # numero_famille n'est PAS unique : plusieurs membres d'une même famille partagent ce numéro.
     conn.execute("""
         CREATE TABLE IF NOT EXISTS membres (
             id               INTEGER PRIMARY KEY AUTOINCREMENT,
-            numero           INTEGER UNIQUE NOT NULL,
+            numero_famille   INTEGER NOT NULL,
             nom              TEXT NOT NULL,
             prenom           TEXT NOT NULL,
             type             TEXT NOT NULL CHECK(type IN ('famille','celibataire')),
@@ -48,69 +50,76 @@ def init_db():
 
 
 def _seed(conn):
-    # (numero, nom, prenom, type, est_chef)
-    membres = [
-        (1,  "Fils de Abdel Kader", "Ahmed",        "famille",    1),
-        (2,  "Djamel",              "",              "celibataire",0),
-        (3,  "Lotfi",               "",              "celibataire",0),
-        (4,  "Mohamkied",           "",              "celibataire",0),
-        (5,  "Zahra",               "Fatima",        "famille",    1),
-        (6,  "Taxi Villepinte",     "Abdel Kader",   "famille",    1),
-        (7,  "Bencherif",           "Karim",         "famille",    1),
-        (8,  "Ouali",               "Fatima",        "famille",    0),
-        (9,  "Meziane",             "Samir",         "famille",    1),
-        (10, "Belkacem",            "Omar",          "famille",    1),
-        (11, "Ziani",               "Kheira",        "famille",    0),
-        (12, "Idir",                "Massinissa",    "famille",    1),
-        (13, "Boudiaf",             "Amina",         "celibataire",0),
-        (14, "Ferhat",              "Djamel",        "celibataire",0),
-        (15, "Cherif",              "Lynda",         "celibataire",0),
+    random.seed(42)
+
+    # Format : (numero_famille, nom, prenom, type, est_chef)
+    # Plusieurs membres peuvent partager le même numero_famille (même famille)
+    membres_seed = [
+        # Famille 1 — Améziane (2 membres)
+        (1, "Améziane",          "Hadj Mohand",   "famille",    1),
+        (1, "Améziane",          "Fatima",         "famille",    0),
+        # Célibataires (numéros uniques)
+        (2, "Djamel",            "",               "celibataire",0),
+        (3, "Lotfi",             "",               "celibataire",0),
+        (4, "Mohamkied",         "",               "celibataire",0),
+        # Famille 5 — Zahra (2 membres)
+        (5, "Zahra",             "Fatima",         "famille",    1),
+        (5, "Zahra",             "Karim",          "famille",    0),
+        # Famille 6 — Villepinte (2 membres)
+        (6, "Villepinte",        "Abdel Kader",    "famille",    1),
+        (6, "Villepinte",        "Ahmed",          "famille",    0),
+        # Familles seules
+        (7, "Bencherif",         "Omar",           "famille",    1),
+        (8, "Meziane",           "Samir",          "famille",    1),
+        (9, "Belkacem",          "Nadia",          "famille",    1),
+        (10,"Ziani",             "Rachid",         "famille",    1),
+        # Célibataires
+        (11,"Boudiaf",           "Amina",          "celibataire",0),
+        (12,"Ferhat",            "Djamel",         "celibataire",0),
     ]
 
-    # Grille de paiements tirée du cahier (photo) pour les 6 premiers,
-    # données fictives pour les suivants.
-    # Format : {numero: {annee: (statut, mode)}}
-    grille = {
-        1: {2020:("payé","espèce"),  2021:("payé","espèce"),  2022:("payé","espèce"),
-            2023:("payé","espèce"),  2024:("payé","espèce"),  2025:("payé","espèce"),  2026:("non payé",None)},
-        2: {2020:("payé","espèce"),  2021:("payé","espèce"),  2022:("payé","chèque"),
-            2023:("payé","espèce"),  2024:("payé","espèce"),  2025:("payé","espèce"),  2026:("non payé",None)},
-        3: {2020:("payé","espèce"),  2021:("payé","espèce"),  2022:("payé","espèce"),
-            2023:("payé","espèce"),  2024:("non payé",None),  2025:("payé","virement"),2026:("non payé",None)},
-        4: {2020:("payé","espèce"),  2021:("payé","espèce"),  2022:("payé","espèce"),
-            2023:("non payé",None),  2024:("payé","espèce"),  2025:("payé","espèce"),  2026:("non payé",None)},
-        5: {2020:("payé","espèce"),  2021:("payé","chèque"),  2022:("payé","espèce"),
-            2023:("payé","espèce"),  2024:("payé","virement"),2025:("payé","espèce"),  2026:("non payé",None)},
-        6: {2020:("payé","espèce"),  2021:("payé","espèce"),  2022:("payé","espèce"),
-            2023:("payé","espèce"),  2024:("payé","chèque"),  2025:("payé","espèce"),  2026:("non payé",None)},
+    # Paiements fixes pour les membres du cahier (photo)
+    grille_fixe = {
+        # (numero_famille, prenom): {annee: (statut, mode)}
+        (1, "Hadj Mohand"): {2020:("payé","espèce"),2021:("payé","espèce"),2022:("payé","espèce"),
+                              2023:("payé","espèce"),2024:("payé","espèce"),2025:("payé","espèce"),2026:("non payé",None)},
+        (1, "Fatima"):      {2020:("payé","espèce"),2021:("payé","espèce"),2022:("payé","espèce"),
+                              2023:("non payé",None),2024:("payé","espèce"),2025:("payé","espèce"),2026:("non payé",None)},
+        (5, "Fatima"):      {2020:("payé","chèque"),2021:("payé","espèce"),2022:("payé","espèce"),
+                              2023:("payé","virement"),2024:("payé","espèce"),2025:("payé","chèque"),2026:("non payé",None)},
+        (5, "Karim"):       {2020:("payé","espèce"),2021:("non payé",None),2022:("payé","espèce"),
+                              2023:("payé","espèce"),2024:("non payé",None),2025:("payé","espèce"),2026:("non payé",None)},
+        (6, "Abdel Kader"): {2020:("payé","espèce"),2021:("payé","espèce"),2022:("payé","espèce"),
+                              2023:("payé","espèce"),2024:("payé","chèque"),2025:("payé","espèce"),2026:("non payé",None)},
+        (6, "Ahmed"):       {2020:("payé","espèce"),2021:("payé","espèce"),2022:("payé","espèce"),
+                              2023:("payé","espèce"),2024:("payé","espèce"),2025:("payé","espèce"),2026:("non payé",None)},
     }
-    # Défaut pour les membres 7-15
-    import random
-    random.seed(42)
-    for num in range(7, 16):
-        grille[num] = {}
-        for a in ANNEES:
-            if a == 2026:
-                grille[num][a] = ("non payé", None)
-            elif random.random() > 0.3:
-                grille[num][a] = ("payé", random.choice(["espèce","chèque","virement"]))
-            else:
-                grille[num][a] = ("non payé", None)
 
-    for num, nom, prenom, type_, chef in membres:
+    def pmt_aleatoire(annee):
+        if annee == 2026:
+            return ("non payé", None)
+        if random.random() > 0.35:
+            return ("payé", random.choice(["espèce","chèque","virement"]))
+        return ("non payé", None)
+
+    for num_f, nom, prenom, type_, chef in membres_seed:
         montant = 60 if type_ == "famille" else 30
         conn.execute(
-            "INSERT INTO membres (numero,nom,prenom,type,montant_du,est_chef_famille) VALUES(?,?,?,?,?,?)",
-            (num, nom, prenom, type_, montant, chef),
+            "INSERT INTO membres (numero_famille,nom,prenom,type,montant_du,est_chef_famille) VALUES(?,?,?,?,?,?)",
+            (num_f, nom, prenom, type_, montant, chef),
         )
-        membre_id = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
+        mid = conn.execute("SELECT last_insert_rowid()").fetchone()[0]
 
+        cle = (num_f, prenom)
         for annee in ANNEES:
-            statut, mode = grille[num].get(annee, ("non payé", None))
+            if cle in grille_fixe:
+                statut, mode = grille_fixe[cle].get(annee, ("non payé", None))
+            else:
+                statut, mode = pmt_aleatoire(annee)
             date_p = f"{annee}-01-15" if statut == "payé" else None
             conn.execute(
-                "INSERT INTO paiements (membre_id,annee,statut,mode_paiement,date_paiement) VALUES(?,?,?,?,?)",
-                (membre_id, annee, statut, mode, date_p),
+                "INSERT OR IGNORE INTO paiements (membre_id,annee,statut,mode_paiement,date_paiement) VALUES(?,?,?,?,?)",
+                (mid, annee, statut, mode, date_p),
             )
 
     conn.commit()

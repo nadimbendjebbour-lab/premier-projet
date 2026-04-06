@@ -1,0 +1,184 @@
+{% extends "base.html" %}
+{% block title %}Famille {{ chef.nom }} N°{{ numero }} — Caisse Bendjebbour{% endblock %}
+
+{% block content %}
+
+<div class="mb-3 d-flex align-items-center gap-2">
+  <a href="{{ url_for('index', annee=annee) }}" class="btn btn-outline-secondary btn-sm">
+    <i class="bi bi-arrow-left me-1"></i>Retour
+  </a>
+  <span class="text-muted small">Familles / Famille N°{{ numero }}</span>
+</div>
+
+<!-- En-tête famille -->
+<div class="card mb-4">
+  <div class="card-header-primary d-flex align-items-center justify-content-between flex-wrap gap-2">
+    <div class="d-flex align-items-center gap-3">
+      <div class="rounded-circle bg-white d-flex align-items-center justify-content-center"
+           style="width:52px;height:52px;flex-shrink:0">
+        <i class="bi bi-people-fill fs-4" style="color:var(--primary)"></i>
+      </div>
+      <div>
+        <div class="fw-bold fs-4">Famille {{ chef.nom }}</div>
+        <div style="opacity:.8;font-size:.88rem">N° {{ numero }} &mdash; {{ membres|length }} membre(s)</div>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('ajouter') }}?famille={{ numero }}"
+         class="btn btn-sm btn-light">
+        <i class="bi bi-person-plus me-1"></i>Ajouter un membre
+      </a>
+    </div>
+  </div>
+
+  <!-- Filtre année -->
+  <div class="card-body pb-2 pt-3">
+    <div class="d-flex gap-2 flex-wrap align-items-center">
+      <span class="text-muted small fw-semibold me-1">Année :</span>
+      {% for a in annees %}
+      <a href="{{ url_for('famille', numero=numero, annee=a) }}"
+         class="btn btn-sm {% if a == annee %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {{ a }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+<!-- Membres de la famille -->
+{% for m in membres %}
+{% set p_annee = paiements_map[m.id].get(annee) %}
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row align-items-center g-3">
+
+      <!-- Identité -->
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-3">
+          <div class="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0
+                       {% if m.est_chef_famille %}bg-warning{% else %}bg-light{% endif %}"
+               style="width:44px;height:44px">
+            <i class="bi bi-person-fill {% if m.est_chef_famille %}text-dark{% else %}text-secondary{% endif %} fs-5"></i>
+          </div>
+          <div>
+            <div class="fw-semibold">
+              {{ m.prenom }} {{ m.nom }}
+              {% if m.est_chef_famille %}
+                <span class="badge bg-warning text-dark ms-1" style="font-size:.65rem">Chef</span>
+              {% endif %}
+            </div>
+            <div class="text-muted small">{{ m.montant_du }} € / an</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Statut année sélectionnée -->
+      <div class="col-md-3 text-md-center">
+        {% if p_annee and p_annee.statut == 'payé' %}
+          <span class="badge-paye fs-6"><i class="bi bi-check-circle me-1"></i>Payé {{ annee }}</span>
+          {% if p_annee.mode_paiement %}
+          <div class="text-muted small mt-1">
+            {{ p_annee.mode_paiement }} — {{ p_annee.date_paiement or '' }}
+          </div>
+          {% endif %}
+        {% else %}
+          <span class="badge-nonpaye fs-6"><i class="bi bi-x-circle me-1"></i>Non payé {{ annee }}</span>
+        {% endif %}
+      </div>
+
+      <!-- Actions -->
+      <div class="col-md-5 d-flex gap-2 flex-wrap justify-content-md-end">
+        {% if p_annee and p_annee.statut == 'payé' %}
+          <form method="POST" action="{{ url_for('annuler_paiement', id=m.id) }}"
+                onsubmit="return confirm('Annuler le paiement {{ annee }} ?')">
+            <input type="hidden" name="annee"   value="{{ annee }}">
+            <input type="hidden" name="retour"  value="famille">
+            <button class="btn btn-outline-warning btn-sm">
+              <i class="bi bi-x-circle me-1"></i>Annuler paiement
+            </button>
+          </form>
+        {% else %}
+          <button class="btn btn-success btn-sm"
+                  data-bs-toggle="modal"
+                  data-bs-target="#modalPayer"
+                  data-membre-id="{{ m.id }}"
+                  data-membre-nom="{{ m.prenom }} {{ m.nom }}"
+                  data-annee="{{ annee }}"
+                  data-montant="{{ m.montant_du }}">
+            <i class="bi bi-cash-coin me-1"></i>Enregistrer paiement {{ annee }}
+          </button>
+        {% endif %}
+        <a href="{{ url_for('membre', id=m.id) }}" class="btn btn-outline-primary btn-sm">
+          <i class="bi bi-clock-history me-1"></i>Historique
+        </a>
+        <a href="{{ url_for('modifier', id=m.id) }}" class="btn btn-outline-secondary btn-sm">
+          <i class="bi bi-pencil"></i>
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endfor %}
+
+<!-- Modal paiement -->
+<div class="modal fade" id="modalPayer" tabindex="-1">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <form method="POST" id="formPayer" action="">
+        <input type="hidden" name="annee"  id="modalAnnee">
+        <input type="hidden" name="retour" value="famille">
+        <div class="modal-header card-header-primary">
+          <h5 class="modal-title"><i class="bi bi-cash-coin me-2"></i>Enregistrer un paiement</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <p class="mb-3">
+            Membre : <strong id="modalNom"></strong> —
+            Montant : <strong id="modalMontant"></strong> €
+          </p>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Mode de paiement <span class="text-danger">*</span></label>
+            <div class="d-flex gap-3 flex-wrap">
+              {% for mode in ['espèce','chèque','virement'] %}
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="mode_paiement"
+                       id="mode_{{ loop.index }}" value="{{ mode }}"
+                       {% if loop.first %}checked{% endif %}>
+                <label class="form-check-label" for="mode_{{ loop.index }}">
+                  {{ mode|capitalize }}
+                </label>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+          <div class="mb-0">
+            <label class="form-label fw-semibold">Date</label>
+            <input type="date" name="date_paiement" class="form-control" value="{{ today }}">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-lg me-1"></i>Confirmer
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.getElementById('modalPayer').addEventListener('show.bs.modal', function(e) {
+    const btn = e.relatedTarget;
+    document.getElementById('modalAnnee').value   = btn.dataset.annee;
+    document.getElementById('modalNom').textContent = btn.dataset.membreNom;
+    document.getElementById('modalMontant').textContent = btn.dataset.montant;
+    document.getElementById('formPayer').action =
+      '/membre/' + btn.dataset.membreId + '/payer';
+  });
+</script>
+{% endblock %}
